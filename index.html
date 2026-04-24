@@ -1,0 +1,1015 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, user-scalable=no"
+    />
+    <title>VS Code Editor | Working Preview | Fixed All Issues</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        background: #1e1e1e;
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        overflow: hidden;
+        height: 100vh;
+      }
+
+      .editor-container {
+        display: flex;
+        flex-direction: column;
+        height: 100vh;
+        background: #1e1e1e;
+        color: #d4d4d4;
+      }
+
+      .editor-header {
+        background: #252526;
+        padding: 8px 16px;
+        border-bottom: 1px solid #3c3c3c;
+        font-size: 13px;
+        display: flex;
+        gap: 20px;
+        justify-content: space-between;
+        align-items: center;
+        flex-shrink: 0;
+      }
+
+      .header-left {
+        display: flex;
+        gap: 20px;
+        align-items: center;
+      }
+
+      .header-right {
+        display: flex;
+        gap: 12px;
+      }
+
+      .preview-btn {
+        background: #0e639c;
+        border: none;
+        color: white;
+        padding: 4px 12px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 12px;
+        font-family: inherit;
+        transition: background 0.2s;
+      }
+
+      .preview-btn:hover {
+        background: #1177bb;
+      }
+
+      .preview-btn.active {
+        background: #6c6c6c;
+      }
+
+      .refresh-btn {
+        background: #2d2d30;
+        border: 1px solid #3c3c3c;
+        color: white;
+        padding: 4px 12px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 12px;
+        font-family: inherit;
+        transition: background 0.2s;
+      }
+
+      .refresh-btn:hover {
+        background: #3c3c3c;
+      }
+
+      .editor-main {
+        display: flex;
+        flex: 1;
+        overflow: hidden;
+        position: relative;
+      }
+
+      .editor-main.split {
+        flex-direction: row;
+      }
+
+      .editor-wrapper {
+        display: flex;
+        flex: 1;
+        overflow: hidden;
+        position: relative;
+        background: #1e1e1e;
+        min-width: 300px;
+      }
+
+      .preview-pane {
+        width: 50%;
+        background: white;
+        border-left: 1px solid #3c3c3c;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+      }
+
+      .preview-header {
+        background: #252526;
+        padding: 6px 12px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 1px solid #3c3c3c;
+        flex-shrink: 0;
+      }
+
+      .preview-header span {
+        font-size: 12px;
+        color: #cccccc;
+      }
+
+      .close-preview {
+        background: none;
+        border: none;
+        color: #cccccc;
+        cursor: pointer;
+        font-size: 18px;
+        padding: 0 8px;
+        border-radius: 4px;
+      }
+
+      .close-preview:hover {
+        background: #3c3c3c;
+      }
+
+      .preview-frame {
+        flex: 1;
+        width: 100%;
+        border: none;
+        background: white;
+      }
+
+      .gutter {
+        background: #1e1e1e;
+        color: #858585;
+        text-align: right;
+        padding-right: 12px;
+        font-family: "Consolas", "Courier New", monospace;
+        font-size: 14px;
+        line-height: 21px;
+        user-select: none;
+        border-right: 1px solid #3c3c3c;
+        min-width: 60px;
+        overflow-y: auto;
+        overflow-x: hidden;
+        position: relative;
+      }
+
+      .gutter::-webkit-scrollbar {
+        display: none;
+      }
+
+      .gutter-content {
+        position: relative;
+      }
+
+      .gutter-line {
+        padding: 0 8px 0 12px;
+        white-space: nowrap;
+        cursor: pointer;
+        display: flex;
+        justify-content: flex-end;
+        align-items: center;
+        gap: 6px;
+        height: 21px;
+        line-height: 21px;
+      }
+
+      .code-area {
+        flex: 1;
+        overflow: auto;
+        position: relative;
+        background: #1e1e1e;
+        font-family: "Consolas", "Courier New", monospace;
+        font-size: 14px;
+        line-height: 21px;
+        outline: none;
+      }
+
+      .code-content {
+        position: relative;
+      }
+
+      .line {
+        white-space: pre;
+        position: relative;
+        display: block;
+        padding-left: 0;
+        cursor: text;
+        height: 21px;
+        line-height: 21px;
+        overflow-x: visible;
+      }
+
+      .line.active-line {
+        background: #2a2d2e;
+      }
+
+      .keyword {
+        color: #569cd6;
+      }
+      .string {
+        color: #ce9178;
+      }
+      .comment {
+        color: #6a9955;
+      }
+      .number {
+        color: #b5cea8;
+      }
+      .bracket {
+        color: #ffd700;
+      }
+
+      ::-webkit-scrollbar {
+        width: 10px;
+        height: 10px;
+      }
+      ::-webkit-scrollbar-track {
+        background: #1e1e1e;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #424242;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: #4e4e4e;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="editor-container">
+      <div class="editor-header">
+        <div class="header-left">
+          <span>📄 login.html</span>
+          <span>⚡ Live Preview Working | No Errors</span>
+        </div>
+        <div class="header-right">
+          <button class="refresh-btn" id="refreshPreviewBtn">
+            🔄 Refresh Preview
+          </button>
+          <button class="preview-btn" id="previewBtn">🌐 Live Preview</button>
+        </div>
+      </div>
+      <div class="editor-main" id="editorMain">
+        <div class="editor-wrapper" id="editorWrapper">
+          <div class="gutter" id="gutter">
+            <div class="gutter-content" id="gutterContent"></div>
+          </div>
+          <div
+            class="code-area"
+            id="codeArea"
+            contenteditable="true"
+            spellcheck="false"
+          >
+            <div class="code-content" id="codeContent"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      (function () {
+        // Fixed Login Page HTML - with proper escaping
+        const LOGIN_PAGE =
+          "<!DOCTYPE html>\n" +
+          '<html lang="en">\n' +
+          "<head>\n" +
+          '    <meta charset="UTF-8">\n' +
+          '    <meta name="viewport" content="width=device-width, initial-scale=1.0">\n' +
+          "    <title>Modern Login Page</title>\n" +
+          "    <style>\n" +
+          "        * {\n" +
+          "            margin: 0;\n" +
+          "            padding: 0;\n" +
+          "            box-sizing: border-box;\n" +
+          "        }\n" +
+          "        body {\n" +
+          '            font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;\n' +
+          "            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);\n" +
+          "            min-height: 100vh;\n" +
+          "            display: flex;\n" +
+          "            justify-content: center;\n" +
+          "            align-items: center;\n" +
+          "            padding: 20px;\n" +
+          "            position: relative;\n" +
+          "            overflow: hidden;\n" +
+          "        }\n" +
+          "        .bubble {\n" +
+          "            position: absolute;\n" +
+          "            background: rgba(255, 255, 255, 0.1);\n" +
+          "            border-radius: 50%;\n" +
+          "            animation: float 20s infinite;\n" +
+          "            pointer-events: none;\n" +
+          "        }\n" +
+          "        @keyframes float {\n" +
+          "            0% { transform: translateY(100vh) rotate(0deg); opacity: 0; }\n" +
+          "            10% { opacity: 1; }\n" +
+          "            90% { opacity: 1; }\n" +
+          "            100% { transform: translateY(-100vh) rotate(360deg); opacity: 0; }\n" +
+          "        }\n" +
+          "        .login-container {\n" +
+          "            background: white;\n" +
+          "            border-radius: 20px;\n" +
+          "            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);\n" +
+          "            overflow: hidden;\n" +
+          "            width: 100%;\n" +
+          "            max-width: 450px;\n" +
+          "            animation: slideIn 0.5s ease;\n" +
+          "            position: relative;\n" +
+          "            z-index: 1;\n" +
+          "        }\n" +
+          "        @keyframes slideIn {\n" +
+          "            from { opacity: 0; transform: translateY(30px); }\n" +
+          "            to { opacity: 1; transform: translateY(0); }\n" +
+          "        }\n" +
+          "        .login-header {\n" +
+          "            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);\n" +
+          "            padding: 40px;\n" +
+          "            text-align: center;\n" +
+          "            color: white;\n" +
+          "        }\n" +
+          "        .avatar {\n" +
+          "            width: 80px;\n" +
+          "            height: 80px;\n" +
+          "            background: rgba(255, 255, 255, 0.2);\n" +
+          "            border-radius: 50%;\n" +
+          "            display: flex;\n" +
+          "            align-items: center;\n" +
+          "            justify-content: center;\n" +
+          "            margin: 0 auto 20px;\n" +
+          "            font-size: 40px;\n" +
+          "        }\n" +
+          "        .login-form {\n" +
+          "            padding: 40px;\n" +
+          "        }\n" +
+          "        .input-group {\n" +
+          "            margin-bottom: 25px;\n" +
+          "            position: relative;\n" +
+          "        }\n" +
+          "        .input-group label {\n" +
+          "            display: block;\n" +
+          "            margin-bottom: 8px;\n" +
+          "            color: #333;\n" +
+          "            font-weight: 500;\n" +
+          "            font-size: 14px;\n" +
+          "        }\n" +
+          "        .input-group input {\n" +
+          "            width: 100%;\n" +
+          "            padding: 12px 15px;\n" +
+          "            border: 2px solid #e1e5e9;\n" +
+          "            border-radius: 10px;\n" +
+          "            font-size: 14px;\n" +
+          "            transition: all 0.3s;\n" +
+          "            outline: none;\n" +
+          "        }\n" +
+          "        .input-group input:focus {\n" +
+          "            border-color: #667eea;\n" +
+          "            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);\n" +
+          "        }\n" +
+          "        .checkbox-group {\n" +
+          "            display: flex;\n" +
+          "            justify-content: space-between;\n" +
+          "            align-items: center;\n" +
+          "            margin-bottom: 25px;\n" +
+          "        }\n" +
+          "        .checkbox {\n" +
+          "            display: flex;\n" +
+          "            align-items: center;\n" +
+          "            gap: 8px;\n" +
+          "            cursor: pointer;\n" +
+          "        }\n" +
+          "        .forgot-link {\n" +
+          "            color: #667eea;\n" +
+          "            text-decoration: none;\n" +
+          "            font-size: 14px;\n" +
+          "        }\n" +
+          "        .login-btn {\n" +
+          "            width: 100%;\n" +
+          "            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);\n" +
+          "            color: white;\n" +
+          "            border: none;\n" +
+          "            padding: 14px;\n" +
+          "            border-radius: 10px;\n" +
+          "            font-size: 16px;\n" +
+          "            font-weight: 600;\n" +
+          "            cursor: pointer;\n" +
+          "            transition: transform 0.2s;\n" +
+          "        }\n" +
+          "        .login-btn:hover {\n" +
+          "            transform: translateY(-2px);\n" +
+          "        }\n" +
+          "        .divider {\n" +
+          "            text-align: center;\n" +
+          "            margin: 25px 0;\n" +
+          "            position: relative;\n" +
+          "        }\n" +
+          "        .divider::before {\n" +
+          '            content: "";\n' +
+          "            position: absolute;\n" +
+          "            top: 50%;\n" +
+          "            left: 0;\n" +
+          "            right: 0;\n" +
+          "            height: 1px;\n" +
+          "            background: #e1e5e9;\n" +
+          "        }\n" +
+          "        .divider span {\n" +
+          "            background: white;\n" +
+          "            padding: 0 15px;\n" +
+          "            position: relative;\n" +
+          "            color: #999;\n" +
+          "            font-size: 14px;\n" +
+          "        }\n" +
+          "        .social-login {\n" +
+          "            display: flex;\n" +
+          "            gap: 15px;\n" +
+          "        }\n" +
+          "        .social-btn {\n" +
+          "            flex: 1;\n" +
+          "            padding: 12px;\n" +
+          "            border: 2px solid #e1e5e9;\n" +
+          "            border-radius: 10px;\n" +
+          "            background: white;\n" +
+          "            cursor: pointer;\n" +
+          "            font-size: 14px;\n" +
+          "        }\n" +
+          "        .social-btn:hover {\n" +
+          "            border-color: #667eea;\n" +
+          "            background: #f8f9ff;\n" +
+          "        }\n" +
+          "        .message {\n" +
+          "            padding: 12px;\n" +
+          "            border-radius: 10px;\n" +
+          "            margin-bottom: 20px;\n" +
+          "            display: none;\n" +
+          "        }\n" +
+          "        .message.error {\n" +
+          "            background: #fee;\n" +
+          "            color: #c33;\n" +
+          "            border-left: 4px solid #c33;\n" +
+          "            display: block;\n" +
+          "        }\n" +
+          "        .message.success {\n" +
+          "            background: #efe;\n" +
+          "            color: #3c3;\n" +
+          "            border-left: 4px solid #3c3;\n" +
+          "            display: block;\n" +
+          "        }\n" +
+          "        .demo-hint {\n" +
+          "            margin-top: 20px;\n" +
+          "            padding: 12px;\n" +
+          "            background: #f8f9ff;\n" +
+          "            border-radius: 10px;\n" +
+          "            text-align: center;\n" +
+          "            font-size: 12px;\n" +
+          "        }\n" +
+          "        code {\n" +
+          "            background: #e1e5e9;\n" +
+          "            padding: 2px 6px;\n" +
+          "            border-radius: 4px;\n" +
+          "        }\n" +
+          "    </style>\n" +
+          "</head>\n" +
+          "<body>\n" +
+          '    <div class="bubble" style="width: 100px; height: 100px; left: 10%;"></div>\n' +
+          '    <div class="bubble" style="width: 150px; height: 150px; left: 80%;"></div>\n' +
+          '    <div class="bubble" style="width: 70px; height: 70px; left: 30%;"></div>\n' +
+          "\n" +
+          '    <div class="login-container">\n' +
+          '        <div class="login-header">\n' +
+          '            <div class="avatar">🔐</div>\n' +
+          "            <h1>Welcome Back!</h1>\n" +
+          "            <p>Sign in to continue</p>\n" +
+          "        </div>\n" +
+          "\n" +
+          '        <div class="login-form">\n' +
+          '            <div id="messageBox" class="message"></div>\n' +
+          "\n" +
+          '            <form id="loginForm">\n' +
+          '                <div class="input-group">\n' +
+          "                    <label>📧 Email Address</label>\n" +
+          '                    <input type="email" id="email" placeholder="Enter your email" required>\n' +
+          "                </div>\n" +
+          "\n" +
+          '                <div class="input-group">\n' +
+          "                    <label>🔒 Password</label>\n" +
+          '                    <input type="password" id="password" placeholder="Enter your password" required>\n' +
+          "                </div>\n" +
+          "\n" +
+          '                <div class="checkbox-group">\n' +
+          '                    <label class="checkbox">\n' +
+          '                        <input type="checkbox" id="rememberMe">\n' +
+          "                        <span>Remember me</span>\n" +
+          "                    </label>\n" +
+          '                    <a href="#" class="forgot-link" id="forgotPassword">Forgot password?</a>\n' +
+          "                </div>\n" +
+          "\n" +
+          '                <button type="submit" class="login-btn">Sign In</button>\n' +
+          "            </form>\n" +
+          "\n" +
+          '            <div class="divider">\n' +
+          "                <span>Or continue with</span>\n" +
+          "            </div>\n" +
+          "\n" +
+          '            <div class="social-login">\n' +
+          '                <button class="social-btn" id="googleLogin">🟢 Google</button>\n' +
+          '                <button class="social-btn" id="githubLogin">🐙 GitHub</button>\n' +
+          "            </div>\n" +
+          "\n" +
+          '            <div class="demo-hint">\n' +
+          "                <strong>📝 Demo Credentials:</strong><br>\n" +
+          "                Email: <code>admin@example.com</code> | Password: <code>admin123</code>\n" +
+          "            </div>\n" +
+          "        </div>\n" +
+          "    </div>\n" +
+          "\n" +
+          "    <script>\n" +
+          "        const users = [\n" +
+          '            { email: "admin@example.com", password: "admin123", name: "Admin User" }\n' +
+          "        ];\n" +
+          "\n" +
+          "        function showMessage(message, type) {\n" +
+          '            var msgBox = document.getElementById("messageBox");\n' +
+          "            msgBox.textContent = message;\n" +
+          '            msgBox.className = "message " + type;\n' +
+          "            setTimeout(function() {\n" +
+          '                msgBox.style.display = "none";\n' +
+          '                msgBox.className = "message";\n' +
+          "            }, 3000);\n" +
+          "        }\n" +
+          "\n" +
+          '        document.getElementById("loginForm").addEventListener("submit", function(e) {\n' +
+          "            e.preventDefault();\n" +
+          '            var email = document.getElementById("email").value;\n' +
+          '            var password = document.getElementById("password").value;\n' +
+          "            \n" +
+          "            var user = null;\n" +
+          "            for(var i = 0; i < users.length; i++) {\n" +
+          "                if(users[i].email === email && users[i].password === password) {\n" +
+          "                    user = users[i];\n" +
+          "                    break;\n" +
+          "                }\n" +
+          "            }\n" +
+          "            \n" +
+          "            if (user) {\n" +
+          '                showMessage("✅ Welcome back, " + user.name + "!", "success");\n' +
+          "                setTimeout(function() {\n" +
+          '                    alert("Login successful!\\nWelcome " + user.name + "!");\n' +
+          "                }, 500);\n" +
+          "            } else {\n" +
+          '                showMessage("❌ Invalid email or password", "error");\n' +
+          "            }\n" +
+          "        });\n" +
+          "\n" +
+          '        document.getElementById("forgotPassword").addEventListener("click", function(e) {\n' +
+          "            e.preventDefault();\n" +
+          '            showMessage("📧 Password reset link would be sent to your email", "success");\n' +
+          "        });\n" +
+          "\n" +
+          '        document.getElementById("googleLogin").onclick = function() {\n' +
+          '            showMessage("🟢 Google login demo", "success");\n' +
+          "        };\n" +
+          "        \n" +
+          '        document.getElementById("githubLogin").onclick = function() {\n' +
+          '            showMessage("🐙 GitHub login demo", "success");\n' +
+          "        };\n" +
+          "    <\/script>\n" +
+          "</body>\n" +
+          "</html>";
+
+        let lines = LOGIN_PAGE.split("\n");
+        let activeLine = 0;
+        let isUpdatingFromDOM = false;
+        let scrollTimeout = null;
+
+        const codeArea = document.getElementById("codeArea");
+        const codeContent = document.getElementById("codeContent");
+        const gutterContent = document.getElementById("gutterContent");
+        const previewBtn = document.getElementById("previewBtn");
+        const refreshPreviewBtn = document.getElementById("refreshPreviewBtn");
+        const editorMain = document.getElementById("editorMain");
+        const gutter = document.getElementById("gutter");
+
+        let previewActive = false;
+        let previewPane = null;
+        let previewFrame = null;
+        let previewUpdateTimer = null;
+
+        function syncGutterScroll() {
+          if (gutter) gutter.scrollTop = codeArea.scrollTop;
+        }
+
+        const KEYWORDS = new Set([
+          "function",
+          "return",
+          "const",
+          "let",
+          "var",
+          "if",
+          "else",
+          "for",
+          "while",
+          "DOCTYPE",
+          "html",
+          "head",
+          "body",
+          "div",
+          "style",
+          "script",
+        ]);
+
+        function escapeHtml(str) {
+          return str.replace(/[&<>]/g, function (m) {
+            if (m === "&") return "&amp;";
+            if (m === "<") return "&lt;";
+            if (m === ">") return "&gt;";
+            return m;
+          });
+        }
+
+        function tokenizeAndHighlight(line) {
+          if (!line) return "";
+          let result = "";
+          let i = 0;
+          const len = line.length;
+
+          while (i < len) {
+            if (line[i] === '"' || line[i] === "'" || line[i] === "`") {
+              const quote = line[i];
+              let start = i;
+              i++;
+              while (i < len && line[i] !== quote) {
+                if (line[i] === "\\") i++;
+                i++;
+              }
+              i++;
+              result +=
+                '<span class="string">' +
+                escapeHtml(line.substring(start, i)) +
+                "</span>";
+              continue;
+            }
+
+            if (line[i] === "/" && line[i + 1] === "/") {
+              result +=
+                '<span class="comment">' +
+                escapeHtml(line.substring(i)) +
+                "</span>";
+              break;
+            }
+
+            if (/[0-9]/.test(line[i])) {
+              let start = i;
+              while (i < len && /[0-9.]/.test(line[i])) i++;
+              result +=
+                '<span class="number">' +
+                escapeHtml(line.substring(start, i)) +
+                "</span>";
+              continue;
+            }
+
+            if (/[a-zA-Z_]/.test(line[i])) {
+              let start = i;
+              while (i < len && /[a-zA-Z0-9_]/.test(line[i])) i++;
+              const word = line.substring(start, i);
+              if (KEYWORDS.has(word.toLowerCase())) {
+                result +=
+                  '<span class="keyword">' + escapeHtml(word) + "</span>";
+              } else {
+                result += escapeHtml(word);
+              }
+              continue;
+            }
+
+            if ("{}[]()<>".includes(line[i])) {
+              result +=
+                '<span class="bracket">' + escapeHtml(line[i]) + "</span>";
+              i++;
+              continue;
+            }
+
+            result += escapeHtml(line[i]);
+            i++;
+          }
+          return result;
+        }
+
+        function renderEditor() {
+          if (isUpdatingFromDOM) return;
+
+          const scrollTop = codeArea.scrollTop;
+          const lineHeight = 21;
+          const containerHeight = codeArea.clientHeight;
+          const totalLines = lines.length;
+
+          const startLine = Math.max(
+            0,
+            Math.floor(scrollTop / lineHeight) - 10,
+          );
+          const endLine = Math.min(
+            totalLines,
+            Math.ceil((scrollTop + containerHeight) / lineHeight) + 10,
+          );
+
+          let codeHtml = "";
+          let gutterHtml = "";
+
+          for (let i = startLine; i < endLine; i++) {
+            const highlighted = tokenizeAndHighlight(lines[i]);
+            const activeClass = activeLine === i ? "active-line" : "";
+            codeHtml +=
+              '<div class="line ' +
+              activeClass +
+              '" data-line="' +
+              i +
+              '">' +
+              (highlighted || " ") +
+              "</div>";
+            gutterHtml +=
+              '<div class="gutter-line" data-line="' +
+              i +
+              '"><span>' +
+              (i + 1) +
+              "</span></div>";
+          }
+
+          codeContent.innerHTML = codeHtml;
+          gutterContent.innerHTML = gutterHtml;
+
+          const topPadding = startLine * lineHeight;
+          const bottomPadding = (totalLines - endLine) * lineHeight;
+          codeContent.style.paddingTop = topPadding + "px";
+          codeContent.style.paddingBottom = bottomPadding + "px";
+          gutterContent.style.paddingTop = topPadding + "px";
+          gutterContent.style.paddingBottom = bottomPadding + "px";
+
+          syncGutterScroll();
+        }
+
+        function handleScroll() {
+          if (scrollTimeout) clearTimeout(scrollTimeout);
+          scrollTimeout = setTimeout(function () {
+            renderEditor();
+            syncGutterScroll();
+          }, 16);
+        }
+
+        function updateLinesFromDOM() {
+          if (isUpdatingFromDOM) return;
+          isUpdatingFromDOM = true;
+
+          const lineDivs = codeContent.querySelectorAll(".line");
+          const newLines = [];
+          for (let i = 0; i < lineDivs.length; i++) {
+            newLines.push(lineDivs[i].innerText);
+          }
+
+          if (
+            newLines.length > 0 &&
+            JSON.stringify(newLines) !== JSON.stringify(lines)
+          ) {
+            lines = newLines;
+            renderEditor();
+            schedulePreviewUpdate();
+          }
+
+          isUpdatingFromDOM = false;
+        }
+
+        function saveCursorPosition() {
+          const selection = window.getSelection();
+          if (!selection.rangeCount) return { line: activeLine, ch: 0 };
+
+          const range = selection.getRangeAt(0);
+          let node = range.startContainer;
+
+          while (
+            node &&
+            node !== codeContent &&
+            !node.classList?.contains("line")
+          ) {
+            node = node.parentElement;
+          }
+
+          if (
+            node &&
+            node.classList &&
+            node.classList.contains("line") &&
+            node.dataset.line !== undefined
+          ) {
+            const lineIdx = parseInt(node.dataset.line);
+            let charOffset = 0;
+
+            const walker = document.createTreeWalker(
+              node,
+              NodeFilter.SHOW_TEXT,
+            );
+            let textNodes = [];
+            while (walker.nextNode()) textNodes.push(walker.currentNode);
+
+            for (let i = 0; i < textNodes.length; i++) {
+              const textNode = textNodes[i];
+              if (textNode === range.startContainer) {
+                charOffset += range.startOffset;
+                break;
+              }
+              charOffset += textNode.textContent.length;
+            }
+
+            return {
+              line: lineIdx,
+              ch: Math.min(charOffset, (lines[lineIdx] || "").length),
+            };
+          }
+
+          return { line: activeLine, ch: 0 };
+        }
+
+        function restoreCursorPosition(cursor) {
+          if (!cursor) return;
+
+          const lineDiv = document.querySelector(
+            '.line[data-line="' + cursor.line + '"]',
+          );
+          if (!lineDiv) return;
+
+          const textNodes = [];
+          const walker = document.createTreeWalker(
+            lineDiv,
+            NodeFilter.SHOW_TEXT,
+          );
+          while (walker.nextNode()) textNodes.push(walker.currentNode);
+
+          let currentOffset = 0;
+          for (let i = 0; i < textNodes.length; i++) {
+            const node = textNodes[i];
+            const len = node.textContent.length;
+            if (currentOffset + len >= cursor.ch) {
+              const range = document.createRange();
+              range.setStart(node, Math.min(cursor.ch - currentOffset, len));
+              range.collapse(true);
+              const sel = window.getSelection();
+              sel.removeAllRanges();
+              sel.addRange(range);
+              return;
+            }
+            currentOffset += len;
+          }
+        }
+
+        let currentCursor = { line: 0, ch: 0 };
+
+        function handleInput() {
+          const cursor = saveCursorPosition();
+          updateLinesFromDOM();
+          setTimeout(function () {
+            restoreCursorPosition(cursor);
+            currentCursor = cursor;
+            activeLine = cursor.line;
+            renderEditor();
+            setTimeout(function () {
+              restoreCursorPosition(cursor);
+            }, 10);
+          }, 0);
+        }
+
+        function updateLivePreview() {
+          if (!previewActive || !previewFrame) return;
+          try {
+            const htmlContent = lines.join("\n");
+            const blob = new Blob([htmlContent], { type: "text/html" });
+            const url = URL.createObjectURL(blob);
+            previewFrame.src = url;
+            setTimeout(function () {
+              URL.revokeObjectURL(url);
+            }, 1000);
+          } catch (e) {
+            console.error("Preview error:", e);
+          }
+        }
+
+        function schedulePreviewUpdate() {
+          if (!previewActive) return;
+          if (previewUpdateTimer) clearTimeout(previewUpdateTimer);
+          previewUpdateTimer = setTimeout(function () {
+            updateLivePreview();
+            previewUpdateTimer = null;
+          }, 300);
+        }
+
+        codeArea.addEventListener("keydown", function (e) {
+          if (e.ctrlKey && e.key === "a") {
+            e.preventDefault();
+            const range = document.createRange();
+            range.selectNodeContents(codeContent);
+            const sel = window.getSelection();
+            sel.removeAllRanges();
+            sel.addRange(range);
+            return;
+          }
+
+          currentCursor = saveCursorPosition();
+
+          if (e.key === "Tab") {
+            e.preventDefault();
+            if (currentCursor.line >= 0 && currentCursor.line < lines.length) {
+              lines[currentCursor.line] = "    " + lines[currentCursor.line];
+              renderEditor();
+              setTimeout(function () {
+                currentCursor.ch += 4;
+                restoreCursorPosition(currentCursor);
+              }, 10);
+              schedulePreviewUpdate();
+            }
+          }
+
+          if (e.ctrlKey && e.key === "s") {
+            e.preventDefault();
+            localStorage.setItem("savedCode", lines.join("\n"));
+            alert("✓ Code saved!");
+          }
+        });
+
+        codeArea.addEventListener("input", handleInput);
+
+        codeArea.addEventListener("click", function () {
+          currentCursor = saveCursorPosition();
+          activeLine = currentCursor.line;
+          renderEditor();
+          setTimeout(function () {
+            restoreCursorPosition(currentCursor);
+          }, 10);
+        });
+
+        codeArea.addEventListener("keyup", function () {
+          currentCursor = saveCursorPosition();
+          activeLine = currentCursor.line;
+          renderEditor();
+          setTimeout(function () {
+            restoreCursorPosition(currentCursor);
+          }, 10);
+        });
+
+        codeArea.addEventListener("scroll", handleScroll);
+
+        function togglePreview() {
+          if (previewActive) {
+            if (previewPane) previewPane.remove();
+            previewActive = false;
+            previewBtn.classList.remove("active");
+            editorMain.classList.remove("split");
+          } else {
+            previewPane = document.createElement("div");
+            previewPane.className = "preview-pane";
+            previewPane.innerHTML =
+              '<div class="preview-header"><span>🔍 Live Preview - HTML/CSS/JS Runner</span><button class="close-preview">✕</button></div><iframe class="preview-frame" sandbox="allow-same-origin allow-scripts allow-popups allow-forms allow-modals"></iframe>';
+            editorMain.appendChild(previewPane);
+            previewFrame = previewPane.querySelector(".preview-frame");
+            previewPane.querySelector(".close-preview").onclick = function () {
+              togglePreview();
+            };
+            previewActive = true;
+            previewBtn.classList.add("active");
+            editorMain.classList.add("split");
+            setTimeout(function () {
+              updateLivePreview();
+            }, 100);
+          }
+        }
+
+        previewBtn.onclick = togglePreview;
+        refreshPreviewBtn.onclick = function () {
+          if (previewActive) updateLivePreview();
+        };
+
+        let resizeTimeout;
+        window.addEventListener("resize", function () {
+          clearTimeout(resizeTimeout);
+          resizeTimeout = setTimeout(function () {
+            renderEditor();
+            if (currentCursor) restoreCursorPosition(currentCursor);
+          }, 100);
+        });
+
+        renderEditor();
+
+        console.log(
+          "✅ Editor ready! Click 'Live Preview' to see the login page!",
+        );
+      })();
+    </script>
+  </body>
+</html>
